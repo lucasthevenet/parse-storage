@@ -1,10 +1,11 @@
-# storage-validator
+# use-valid-storage
 Use parsers to validate your local/session storage
 
 ## Usage
 Create an object mapping every key to appear in localStorage to a Zod schema:
 ```tsx
-import { useLocalStorage } from 'storage-validator'
+import { useLocalStorage } from 'use-valid-storage'
+import { z } from 'zod'
 
 // Usage
 export default function Component() {
@@ -23,3 +24,6 @@ export default function Component() {
   )
 }
 ```
+
+## Credits
+Credit to [trpc](https://github.com/trpc/trpc) from where I got the parser utils. Great library btw.
