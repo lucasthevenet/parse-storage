@@ -1,6 +1,6 @@
 {
   "name": "use-valid-storage",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Use parsers to validate your local/session storage",
   "author": "Lucas Thevenet <lucastcervantes@gmail.com>",
   "keywords": [
