@@ -1,9 +1,9 @@
 import { act, renderHook } from "@testing-library/react-hooks/dom";
 import { z } from "zod";
 
-import useSessionStorage from ".";
+import useLocalStorage from ".";
 
-class SessionStorageMock {
+class LocalStorageMock {
   store: Record<string, unknown> = {};
 
   clear() {
@@ -23,13 +23,13 @@ class SessionStorageMock {
   }
 }
 
-Object.defineProperty(window, "sessionStorage", {
-  value: new SessionStorageMock(),
+Object.defineProperty(window, "localStorage", {
+  value: new LocalStorageMock(),
 });
 
-describe("useSessionStorage()", () => {
+describe("useLocalStorage()", () => {
   beforeEach(() => {
-    window.sessionStorage.clear();
+    window.localStorage.clear();
   });
 
   afterEach(() => {
@@ -37,45 +37,37 @@ describe("useSessionStorage()", () => {
   });
 
   test("initial state is in the returned state", () => {
-    const { result } = renderHook(() =>
-      useSessionStorage({
-        key: "key",
-        initialValue: "value",
-      }),
-    );
+    const { result } = renderHook(() => useLocalStorage({
+      key: "key",
+      initialValue: "value",
+    }));
 
     expect(result.current[0]).toBe("value");
   });
 
   test("Initial state is a callback function", () => {
-    const { result } = renderHook(() =>
-      useSessionStorage({
-        key: "key",
-        initialValue: () => "value",
-      }),
-    );
+    const { result } = renderHook(() => useLocalStorage({
+      key: "key",
+      initialValue: () => "value",
+    }));
 
     expect(result.current[0]).toBe("value");
   });
 
   test("Initial state is an array", () => {
-    const { result } = renderHook(() =>
-      useSessionStorage({
-        key: "key",
-        initialValue: [1, 2],
-      }),
-    );
+    const { result } = renderHook(() => useLocalStorage({
+      key: "key",
+      initialValue: [1, 2],
+    }));
 
     expect(result.current[0]).toEqual([1, 2]);
   });
 
   test("Update the state", () => {
-    const { result } = renderHook(() =>
-      useSessionStorage({
-        key: "key",
-        initialValue: "value",
-      }),
-    );
+    const { result } = renderHook(() => useLocalStorage({
+      key: "key",
+      initialValue: "value",
+    }));
 
     act(() => {
       const setState = result.current[1];
@@ -85,9 +77,9 @@ describe("useSessionStorage()", () => {
     expect(result.current[0]).toBe("edited");
   });
 
-  test("Update the state writes sessionStorage", () => {
+  test("Update the state writes localStorage", () => {
     const { result } = renderHook(() =>
-      useSessionStorage({
+      useLocalStorage({
         key: "key",
         initialValue: "value",
       }),
@@ -98,12 +90,12 @@ describe("useSessionStorage()", () => {
       setState("edited");
     });
 
-    expect(window.sessionStorage.getItem("key")).toBe(JSON.stringify("edited"));
+    expect(window.localStorage.getItem("key")).toBe(JSON.stringify("edited"));
   });
 
   test("Update the state with undefined", () => {
     const { result } = renderHook(() =>
-      useSessionStorage<string | undefined>({
+      useLocalStorage<string | undefined>({
         key: "key",
         initialValue: "value",
       }),
@@ -119,7 +111,7 @@ describe("useSessionStorage()", () => {
 
   test("Update the state with null", () => {
     const { result } = renderHook(() =>
-      useSessionStorage<string | null>({
+      useLocalStorage<string | null>({
         key: "key",
         initialValue: "value",
       }),
@@ -134,12 +126,10 @@ describe("useSessionStorage()", () => {
   });
 
   test("Update the state with a callback function", () => {
-    const { result } = renderHook(() =>
-      useSessionStorage({
-        key: "count",
-        initialValue: 2,
-      }),
-    );
+    const { result } = renderHook(() => useLocalStorage({
+      key: "count",
+      initialValue: 2,
+    }));
 
     act(() => {
       const setState = result.current[1];
@@ -147,7 +137,7 @@ describe("useSessionStorage()", () => {
     });
 
     expect(result.current[0]).toBe(3);
-    expect(window.sessionStorage.getItem("count")).toEqual("3");
+    expect(window.localStorage.getItem("count")).toEqual("3");
   });
 
   test("[Event] Update one hook updates the others", () => {
@@ -155,8 +145,8 @@ describe("useSessionStorage()", () => {
       key: "key",
       initialValue: "initial",
     };
-    const { result: A } = renderHook(() => useSessionStorage(config));
-    const { result: B } = renderHook(() => useSessionStorage(config));
+    const { result: A } = renderHook(() => useLocalStorage(config));
+    const { result: B } = renderHook(() => useLocalStorage(config));
 
     act(() => {
       const setState = A.current[1];
@@ -167,12 +157,10 @@ describe("useSessionStorage()", () => {
   });
 
   test("setValue is referentially stable", () => {
-    const { result } = renderHook(() =>
-      useSessionStorage({
-        key: "count",
-        initialValue: 1,
-      }),
-    );
+    const { result } = renderHook(() => useLocalStorage({
+      key: "count",
+      initialValue: 1,
+    }));
 
     // Store a reference to the original setValue
     const originalCallback = result.current[1];
@@ -189,10 +177,10 @@ describe("useSessionStorage()", () => {
 
   test("validate value", () => {
     const { result } = renderHook(() =>
-      useSessionStorage({
+      useLocalStorage({
         key: "key",
-        initialValue: 1,
-        schema: z.string(),
+        initialValue: [],
+        schema: z.number(),
       }),
     );
 
