@@ -1,11 +1,7 @@
-import {
-  Dispatch,
-  SetStateAction,
-  useCallback,
-  useEffect,
-  useState,
-} from "react";
-import { inferParser, Parser, getParseFn } from "../internals/parser";
+import type { Dispatch, SetStateAction } from "react";
+import { useCallback, useEffect, useState } from "react";
+import type { inferParser, Parser } from "../internals/parser";
+import { getParseFn } from "../internals/parser";
 import useEventCallback from "../internals/hooks/useEventCallback";
 import useEventListener from "../internals/hooks/useEventListener";
 
@@ -17,16 +13,18 @@ declare global {
 
 type SetValue<T> = Dispatch<SetStateAction<T>>;
 
-type StorageConfig = {
-  schema?: Parser;
+type StorageConfig<T> = {
+  key: string;
+  initialValue: T;
+  schema?: T extends inferParser<infer TParser>["out"] ? TParser : never;
+  replace?: boolean;
 };
 
+
 function useSessionStorage<T>(
-  key: string,
-  initialValue: T,
-  config?: StorageConfig,
+  config: StorageConfig<T>,
 ): [T, SetValue<T>] {
-  const { schema } = config || {};
+  const { schema, initialValue, replace, key } = config || {};
   // Get from session storage then
   // parse stored json or return initialValue
   const readValue = useCallback((): T => {
@@ -40,6 +38,14 @@ function useSessionStorage<T>(
       return item ? (parse(item, schema) as T) : initialValue;
     } catch (error) {
       console.warn(`Error reading sessionStorage key “${key}”:`, error);
+
+      if (replace) {
+        window.sessionStorage.setItem(key, JSON.stringify(initialValue));
+
+        // We dispatch a custom event so every useSessionStorage hook are notified
+        window.dispatchEvent(new Event("session-storage"));
+      }
+
       return initialValue;
     }
   }, [initialValue, key]);
@@ -77,7 +83,6 @@ function useSessionStorage<T>(
 
   useEffect(() => {
     setStoredValue(readValue());
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleStorageChange = useCallback(
@@ -107,10 +112,10 @@ function parse<T>(value: string | null, schema?: Parser): T | undefined {
     if (value === "undefined") return undefined;
     let result = JSON.parse(value ?? "");
     if (schema) {
-      const parser = getParseFn(schema);
-      return parser(result) as inferParser<typeof schema>["out"];
+      const parser = getParseFn<T>(schema);
+      return parser(result);
     }
-    return result;
+    return result as T;
   } catch {
     console.log("parsing error on", { value });
     return undefined;

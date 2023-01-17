@@ -9,7 +9,6 @@ import { inferParser, Parser, getParseFn } from "../internals/parser";
 import useEventCallback from "../internals/hooks/useEventCallback";
 import useEventListener from "../internals/hooks/useEventListener";
 
-
 declare global {
   interface WindowEventMap {
     "local-storage": CustomEvent;
@@ -18,15 +17,15 @@ declare global {
 
 type SetValue<T> = Dispatch<SetStateAction<T>>;
 
-type StorageConfig<TParser extends Parser = Parser> = {
-  schema?: TParser;
+type StorageConfig<T> = {
+  key: string;
+  initialValue: T;
+  schema?: T extends inferParser<infer TParser>["out"] ? TParser : never;
+  replace?: boolean;
 };
 
-function useLocalStorage<T, _TParser extends Parser = Parser>(
-  key: string,
-  initialValue: T,
-  config?: StorageConfig<_TParser>): [T, SetValue<T>] {
-  const { schema } = config || {};
+function useLocalStorage<T>(config: StorageConfig<T>): [T, SetValue<T>] {
+  const { schema, initialValue, replace, key } = config;
   // Get from local storage then
   // parse stored json or return initialValue
   const readValue = useCallback((): T => {
@@ -40,6 +39,13 @@ function useLocalStorage<T, _TParser extends Parser = Parser>(
       return item ? (parse(item, schema) as T) : initialValue;
     } catch (error) {
       console.warn(`Error reading localStorage key “${key}”:`, error);
+
+      if (replace) {
+        window.localStorage.setItem(key, JSON.stringify(initialValue));
+
+        // We dispatch a custom event so every useSessionStorage hook are notified
+        window.dispatchEvent(new Event("local-storage"));
+      }
       return initialValue;
     }
   }, [initialValue, key]);
@@ -104,13 +110,13 @@ export default useLocalStorage;
 
 function parse<T>(value: string | null, schema?: Parser): T | undefined {
   try {
-    if (value === "undefined") return undefined
+    if (value === "undefined") return undefined;
     let result = JSON.parse(value ?? "");
     if (schema) {
-      const parser = getParseFn(schema);
-      return parser(result) as inferParser<typeof schema>['out'];
+      const parser = getParseFn<T>(schema);
+      return parser(result);
     }
-    return result;
+    return result as T;
   } catch {
     console.log("parsing error on", { value });
     return undefined;

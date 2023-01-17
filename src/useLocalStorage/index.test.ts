@@ -37,25 +37,37 @@ describe("useLocalStorage()", () => {
   });
 
   test("initial state is in the returned state", () => {
-    const { result } = renderHook(() => useLocalStorage("key", "value"));
+    const { result } = renderHook(() => useLocalStorage({
+      key: "key",
+      initialValue: "value",
+    }));
 
     expect(result.current[0]).toBe("value");
   });
 
   test("Initial state is a callback function", () => {
-    const { result } = renderHook(() => useLocalStorage("key", () => "value"));
+    const { result } = renderHook(() => useLocalStorage({
+      key: "key",
+      initialValue: () => "value",
+    }));
 
     expect(result.current[0]).toBe("value");
   });
 
   test("Initial state is an array", () => {
-    const { result } = renderHook(() => useLocalStorage("digits", [1, 2]));
+    const { result } = renderHook(() => useLocalStorage({
+      key: "key",
+      initialValue: [1, 2],
+    }));
 
     expect(result.current[0]).toEqual([1, 2]);
   });
 
   test("Update the state", () => {
-    const { result } = renderHook(() => useLocalStorage("key", "value"));
+    const { result } = renderHook(() => useLocalStorage({
+      key: "key",
+      initialValue: "value",
+    }));
 
     act(() => {
       const setState = result.current[1];
@@ -66,7 +78,12 @@ describe("useLocalStorage()", () => {
   });
 
   test("Update the state writes localStorage", () => {
-    const { result } = renderHook(() => useLocalStorage("key", "value"));
+    const { result } = renderHook(() =>
+      useLocalStorage({
+        key: "key",
+        initialValue: "value",
+      }),
+    );
 
     act(() => {
       const setState = result.current[1];
@@ -78,7 +95,10 @@ describe("useLocalStorage()", () => {
 
   test("Update the state with undefined", () => {
     const { result } = renderHook(() =>
-      useLocalStorage<string | undefined>("key", "value"),
+      useLocalStorage<string | undefined>({
+        key: "key",
+        initialValue: "value",
+      }),
     );
 
     act(() => {
@@ -91,7 +111,10 @@ describe("useLocalStorage()", () => {
 
   test("Update the state with null", () => {
     const { result } = renderHook(() =>
-      useLocalStorage<string | null>("key", "value"),
+      useLocalStorage<string | null>({
+        key: "key",
+        initialValue: "value",
+      }),
     );
 
     act(() => {
@@ -103,7 +126,10 @@ describe("useLocalStorage()", () => {
   });
 
   test("Update the state with a callback function", () => {
-    const { result } = renderHook(() => useLocalStorage("count", 2));
+    const { result } = renderHook(() => useLocalStorage({
+      key: "count",
+      initialValue: 2,
+    }));
 
     act(() => {
       const setState = result.current[1];
@@ -115,9 +141,12 @@ describe("useLocalStorage()", () => {
   });
 
   test("[Event] Update one hook updates the others", () => {
-    const initialValues: [string, unknown] = ["key", "initial"];
-    const { result: A } = renderHook(() => useLocalStorage(...initialValues));
-    const { result: B } = renderHook(() => useLocalStorage(...initialValues));
+    const config = {
+      key: "key",
+      initialValue: "initial",
+    };
+    const { result: A } = renderHook(() => useLocalStorage(config));
+    const { result: B } = renderHook(() => useLocalStorage(config));
 
     act(() => {
       const setState = A.current[1];
@@ -128,7 +157,10 @@ describe("useLocalStorage()", () => {
   });
 
   test("setValue is referentially stable", () => {
-    const { result } = renderHook(() => useLocalStorage("count", 1));
+    const { result } = renderHook(() => useLocalStorage({
+      key: "count",
+      initialValue: 1,
+    }));
 
     // Store a reference to the original setValue
     const originalCallback = result.current[1];
@@ -145,8 +177,10 @@ describe("useLocalStorage()", () => {
 
   test("validate value", () => {
     const { result } = renderHook(() =>
-      useLocalStorage("key", 1, {
-        schema: z.string(),
+      useLocalStorage({
+        key: "key",
+        initialValue: 1,
+        schema: z.number(),
       }),
     );
 
