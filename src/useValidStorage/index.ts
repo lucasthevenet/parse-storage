@@ -12,6 +12,7 @@ import useEventListener from "../internals/hooks/useEventListener";
 declare global {
   interface WindowEventMap {
     "local-storage": CustomEvent;
+    "session-storage": CustomEvent;
   }
 }
 
@@ -20,13 +21,14 @@ type SetValue<T> = Dispatch<SetStateAction<T>>;
 type StorageConfig<T> = {
   key: string;
   initialValue: T;
+  type?: "local" | "session";
   schema?: T extends inferParser<infer TParser>["out"] ? TParser : never;
   replace?: boolean;
 };
 
-function useLocalStorage<T>(config: StorageConfig<T>): [T, SetValue<T>] {
-  const { schema, initialValue, replace, key } = config;
-  // Get from local storage then
+function useValidStorage<T>(config: StorageConfig<T>): [T, SetValue<T>] {
+  const { schema, initialValue, replace, key, type ='local' } = config;
+  // Get from storage then
   // parse stored json or return initialValue
   const readValue = useCallback((): T => {
     // Prevent build error "window is undefined" but keeps working
@@ -35,16 +37,27 @@ function useLocalStorage<T>(config: StorageConfig<T>): [T, SetValue<T>] {
     }
 
     try {
-      const item = window.localStorage.getItem(key);
-      return item ? (parse(item, schema) as T) : initialValue;
+      const item = window[`${type}Storage`].getItem(key);
+
+      if (!item) {
+        return initialValue;
+      }
+      
+      if (schema) {
+        const parse = getParseFn(schema);
+
+        return parse(parseJSON(item)) as T;
+      }
+
+      return parseJSON(item) as T;
     } catch (error) {
-      console.warn(`Error reading localStorage key “${key}”:`, error);
+      console.warn(`Error reading ${type}Storage key “${key}”:`, error);
 
       if (replace) {
-        window.localStorage.setItem(key, JSON.stringify(initialValue));
+        window[`${type}Storage`].setItem(key, JSON.stringify(initialValue));
 
         // We dispatch a custom event so every useSessionStorage hook are notified
-        window.dispatchEvent(new Event("local-storage"));
+        window.dispatchEvent(new Event(`${type}-storage`));
       }
       return initialValue;
     }
@@ -60,7 +73,7 @@ function useLocalStorage<T>(config: StorageConfig<T>): [T, SetValue<T>] {
     // Prevent build error "window is undefined" but keeps working
     if (typeof window === "undefined") {
       console.warn(
-        `Tried setting localStorage key “${key}” even though environment is not a client`,
+        `Tried setting ${type}Storage key “${key}” even though environment is not a client`,
       );
     }
 
@@ -75,9 +88,9 @@ function useLocalStorage<T>(config: StorageConfig<T>): [T, SetValue<T>] {
       setStoredValue(newValue);
 
       // We dispatch a custom event so every useLocalStorage hook are notified
-      window.dispatchEvent(new Event("local-storage"));
+      window.dispatchEvent(new Event(`${type}-storage`));
     } catch (error) {
-      console.warn(`Error setting localStorage key “${key}”:`, error);
+      console.warn(`Error setting ${type}Storage key “${key}”:`, error);
     }
   });
 
@@ -101,22 +114,16 @@ function useLocalStorage<T>(config: StorageConfig<T>): [T, SetValue<T>] {
 
   // this is a custom event, triggered in writeValueToLocalStorage
   // See: useLocalStorage()
-  useEventListener("local-storage", handleStorageChange);
+  useEventListener(`${type}-storage`, handleStorageChange);
 
   return [storedValue, setValue];
 }
 
-export default useLocalStorage;
+export default useValidStorage;
 
-function parse<T>(value: string | null, schema?: Parser): T | undefined {
+function parseJSON<T>(value: string | null): T | undefined {
   try {
-    if (value === "undefined") return undefined;
-    let result = JSON.parse(value ?? "");
-    if (schema) {
-      const parser = getParseFn<T>(schema);
-      return parser(result);
-    }
-    return result as T;
+    return value === "undefined" ? undefined : JSON.parse(value ?? "");
   } catch {
     console.log("parsing error on", { value });
     return undefined;
